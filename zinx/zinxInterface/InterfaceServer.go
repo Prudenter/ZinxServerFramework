@@ -9,5 +9,8 @@ type ZinxInterfaceServer interface {
 	Stop()
 	//运行服务器
 	Run()
+
+	//定义添加路由的方法,暴露给开发者
+	AddRouter(router InterfaceRouter)
 }
 

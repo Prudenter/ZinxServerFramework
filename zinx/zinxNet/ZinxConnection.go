@@ -19,45 +19,45 @@ type ZinxConnection struct {
 	//当前的链接状态
 	IsClosed bool
 
-	//当前链接所绑定的业务处理方法
-	HandleAPI zinxInterface.HandleFunc
+	//当前链接所绑定的Router
+	Router zinxInterface.InterfaceRouter
 }
 
 /*
 	初始化链接方法
 */
-func NewZinxConnection(conn *net.TCPConn, connId uint32, callBack_api zinxInterface.HandleFunc) zinxInterface.InterfaceConnection {
+func NewZinxConnection(conn *net.TCPConn, connId uint32, router zinxInterface.InterfaceRouter) zinxInterface.InterfaceConnection {
 	return &ZinxConnection{
-		Conn:      conn,
-		ConnID:    connId,
-		HandleAPI: callBack_api,
-		IsClosed:  false,
+		Conn:     conn,
+		ConnID:   connId,
+		IsClosed: false,
+		Router:   router,
 	}
 }
-
-
 
 //针对链接读业务的方法
 func (conn *ZinxConnection) StartReader() {
 	//从对端读数据
 	fmt.Println("Reader go is startin...")
-	defer fmt.Println("connId = ",conn.ConnID,"Reader is exit,remote addr is =",conn.GetRemoteAddr().String())
+	defer fmt.Println("connId = ", conn.ConnID, "Reader is exit,remote addr is =", conn.GetRemoteAddr().String())
 	defer conn.Stop()
-	for  {
-		buf := make([]byte,512)
-		n,err := conn.Conn.Read(buf)
+	for {
+		buf := make([]byte, 512)
+		n, err := conn.Conn.Read(buf)
 		if err != nil {
-			fmt.Println("receive buff err:",err)
+			fmt.Println("receive buff err:", err)
 			break
 		}
 		//将当前一次性得到的客户端请求数据封装成一个Request
-		request := NewZinxRequest(conn,buf,n)
+		request := NewZinxRequest(conn, buf, n)
 
-		//将数据传递给我们定义好的业务处理方法
-		if err := conn.HandleAPI(request); err != nil {
-			fmt.Println("ConnId:",conn.ConnID,"Handle err:",err)
-			break
-		}
+		//调用用户传递进来的业务处理方法,即自定义router中的业务处理方法--模板设计模式
+		go func() { //添加go程,防止阻塞
+			//在此处理核心业务
+			conn.Router.PreHandle(request)
+			conn.Router.Handle(request)
+			conn.Router.PostHandle(request)
+		}()
 	}
 }
 
@@ -101,8 +101,8 @@ func (conn *ZinxConnection) GetRemoteAddr() net.Addr {
 
 //发送数据给对方客户端
 func (conn *ZinxConnection) Send(data []byte, cnt int) error {
-	if _, err := conn.Conn.Write(data[:cnt]);err != nil{
-		fmt.Println("send buf err:",err)
+	if _, err := conn.Conn.Write(data[:cnt]); err != nil {
+		fmt.Println("send buf err:", err)
 	}
 	return nil
 }

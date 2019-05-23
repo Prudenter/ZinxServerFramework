@@ -20,6 +20,9 @@ type ZinxServer struct {
 	Port int
 	//服务器名称
 	Name string
+
+	//路由属性
+	Router zinxInterface.InterfaceRouter
 }
 
 //定义初始化服务器的方法
@@ -29,6 +32,7 @@ func NewServer(name string) zinxInterface.ZinxInterfaceServer {
 		IPVersion: "tcp4",
 		Port:      7777,
 		Name:      name,
+		Router:    nil,
 	}
 	return server
 }
@@ -36,7 +40,7 @@ func NewServer(name string) zinxInterface.ZinxInterfaceServer {
 //定义一个具体的回显业务,针对 type HandleFunc func(*net.TCPConn,[]byte,int) error
 func CallBackFunc(request zinxInterface.InterfaceRequest) error {
 	//处理回显业务
-	fmt.Println("[conn Handle] CallBack...")
+	fmt.Println("[conn Handle] CallBackFunc...")
 	//通过request获取当前请求的相关数据,包括:conn的原生socket套接字,链接的数据,数据的长度
 	conn := request.GetConnection().GetTCPConnection()
 	buf := request.GetData()
@@ -52,7 +56,7 @@ func CallBackFunc(request zinxInterface.InterfaceRequest) error {
 
 //启动服务器,实现服务器监听---使用原生socket 服务器编程
 func (server *ZinxServer) Start() {
-	fmt.Printf("[start] Server Linstenner at IP:%s,Port:%d,is starting..\n", server.IP, server.Port)
+	fmt.Printf("[start] %s Linstenner at IP:%s,Port:%d,is starting..\n", server.Name, server.IP, server.Port)
 	//1.创建套接字,得到一个TCP的addr
 	addr, err := net.ResolveTCPAddr(server.IPVersion, fmt.Sprintf("%s:%d", server.IP, server.Port))
 	if err != nil {
@@ -82,10 +86,10 @@ func (server *ZinxServer) Start() {
 			}
 
 			//创建一个ZinxConnection对象
-			dealConn := NewZinxConnection(conn, connId, CallBackFunc)
+			dealConn := NewZinxConnection(conn, connId, server.Router)
 			connId ++
 			//启动链接,进行业务处理
-			go dealConn.Start()    	// 如果不加go程,则当前子go程会一直阻塞,无法进行并发访问,不能同时处理多个客户端的请求
+			go dealConn.Start() // 如果不加go程,则当前子go程会一直阻塞,无法进行并发访问,不能同时处理多个客户端的请求
 		}
 	}()
 }
@@ -106,4 +110,9 @@ func (server *ZinxServer) Run() {
 	select { //保证main函数不退出
 
 	}
+}
+
+//添加路由的方法
+func (server *ZinxServer) AddRouter(router zinxInterface.InterfaceRouter) {
+	server.Router = router
 }

@@ -3,7 +3,6 @@ package zinxNet
 import (
 	"fmt"
 	"net"
-	"io"
 	"ZinxServerFramework/zinx/zinxInterface"
 )
 
@@ -34,6 +33,17 @@ func Init(name string) zinxInterface.ZinxInterfaceServer {
 	return server
 }
 
+//定义一个具体的回显业务,针对 type HandleFunc func(*net.TCPConn,[]byte,int) error
+func CallBackFunc(conn *net.TCPConn, data []byte, cnt int) error {
+	//处理回显业务
+	fmt.Println("[conn Handle] CallBack...")
+	if _, err := conn.Write(data[:cnt]); err != nil {
+		fmt.Println("write back err:", err)
+		return err
+	}
+	return nil
+}
+
 //实现抽象接口的方法
 //启动服务器,实现服务器监听---使用原生socket 服务器编程
 func (server *Server) Start() {
@@ -52,35 +62,25 @@ func (server *Server) Start() {
 		return
 	}
 
+	//生成connid的累加器
+	var connId uint32
+	connId = 0
+
 	//3.阻塞等待客户端发送请求
-	go func() {//如果不加go程,则主go程会一直阻塞,无法执行主go程的其他扩展
+	go func() { //如果不加go程,Start()会一直阻塞,则主go程也会阻塞,无法执行主go程的其他扩展
 		for {
 			//阻塞等待客户端发送请求
-			conn, err := listenner.Accept()
+			conn, err := listenner.AcceptTCP()
 			if err != nil {
 				fmt.Println("ListenTCP err:", err)
 				continue
 			}
-			//此时已经和客户端建立了连接
-			go func() {//如果不加go程,则当前子go程会一直阻塞,无法进行并发访问,不能同时处理多个客户端的请求
-				//4.客户端有数据请求，循环处理客户端业务,包括读和写
-				for {
-					buf := make([]byte,512)
-					n,err := conn.Read(buf)
-					if err!=nil && err==io.EOF{
-						fmt.Println("请求数据读完了")
-						break
-					}
-					fmt.Printf("receive client buf %s,n = %d\n",buf,n)
 
-					//回显功能,进行业务处理
-					_,err = conn.Write(buf[:n])
-					if err!=nil {
-						fmt.Println("Write err:",err)
-						continue
-					}
-				}
-			}()
+			//创建一个Connection对象
+			dealConn := NewConnection(conn, connId, CallBackFunc)
+			connId ++
+			//启动链接,进行业务处理
+			go dealConn.Start()    	// 如果不加go程,则当前子go程会一直阻塞,无法进行并发访问,不能同时处理多个客户端的请求
 		}
 	}()
 }
@@ -97,7 +97,7 @@ func (server *Server) Run() {
 
 	//TODO 做一些其他的扩展
 	//阻塞 //告诉CPU不再需要处理，节省cpu资源
-	select{ //保证main函数不退出
+	select { //保证main函数不退出
 
 	}
 }

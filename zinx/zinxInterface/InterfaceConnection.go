@@ -19,11 +19,11 @@ type InterfaceConnection interface {
 	GetTCPConnection() *net.TCPConn
 
 	//获取远程客户端的ip地址
-	GetRemoteAddr() *net.Addr
+	GetRemoteAddr() net.Addr
 
 	//发送数据给对方客户端
-	Send(data[]byte)error
+	Send(data[]byte,cnt int)error
 }
 
-//定义抽象的业务处理方法
+//定义抽象的业务处理方法,将函数指针定义在抽象层,符合依赖倒转设计原则
 type HandleFunc func(*net.TCPConn,[]byte,int) error

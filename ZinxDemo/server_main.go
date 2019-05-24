@@ -53,7 +53,7 @@ func (this *PingRouter)PostHandle(requset zinxInterface.InterfaceRequest){
 
 func main() {
 	//创建一个zinx server对象
-	zinxServer := zinxNet.NewServer("Zinx_TestServer ")
+	zinxServer := zinxNet.NewServer()
 
 	//TODO 注册一些自定义的业务
 	// 添加自定义路由到server中,真正处理核心业务的方法在自定义路由里

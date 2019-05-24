@@ -1,0 +1,6 @@
+{
+  "Name": "MyZinxServer",
+  "Host": "127.0.0.1",
+  "Port": 7777,
+  "MaxPackage": 4096
+}

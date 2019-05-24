@@ -4,6 +4,7 @@ import (
 	"net"
 	"ZinxServerFramework/zinx/zinxInterface"
 	"fmt"
+	"ZinxServerFramework/zinx/utils"
 )
 
 //实现具体的TCP链接模块
@@ -42,7 +43,7 @@ func (conn *ZinxConnection) StartReader() {
 	defer fmt.Println("connId = ", conn.ConnID, "Reader is exit,remote addr is =", conn.GetRemoteAddr().String())
 	defer conn.Stop()
 	for {
-		buf := make([]byte, 512)
+		buf := make([]byte, utils.Globj.MaxPackage)
 		n, err := conn.Conn.Read(buf)
 		if err != nil {
 			fmt.Println("receive buff err:", err)

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"ZinxServerFramework/zinx/zinxInterface"
+	"ZinxServerFramework/zinx/utils"
 )
 
 /*
@@ -26,30 +27,15 @@ type ZinxServer struct {
 }
 
 //定义初始化服务器的方法
-func NewServer(name string) zinxInterface.ZinxInterfaceServer {
+func NewServer() zinxInterface.ZinxInterfaceServer {
 	server := &ZinxServer{
-		IP:        "0.0.0.0",
+		IP:        utils.Globj.Host,
 		IPVersion: "tcp4",
-		Port:      7777,
-		Name:      name,
+		Port:      utils.Globj.Port,
+		Name:      utils.Globj.Name,
 		Router:    nil,
 	}
 	return server
-}
-
-//定义一个具体的回显业务,针对 type HandleFunc func(*net.TCPConn,[]byte,int) error
-func CallBackFunc(request zinxInterface.InterfaceRequest) error {
-	//处理回显业务
-	fmt.Println("[conn Handle] CallBackFunc...")
-	//通过request获取当前请求的相关数据,包括:conn的原生socket套接字,链接的数据,数据的长度
-	conn := request.GetConnection().GetTCPConnection()
-	buf := request.GetData()
-	cnt := request.GetDataLen()
-	if _, err := conn.Write(buf[:cnt]); err != nil {
-		fmt.Println("write back err:", err)
-		return err
-	}
-	return nil
 }
 
 //实现抽象接口的方法

@@ -31,7 +31,7 @@ func init() {
 		MaxPackage: 512,
 	}
 	//加载开发者自定义的配置文件
-	Globj.LoadConfig()
+	//Globj.LoadConfig()
 }
 
 //定义一个加载配置文件的方法

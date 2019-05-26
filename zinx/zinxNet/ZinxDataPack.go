@@ -27,7 +27,7 @@ func (zdp *ZinxDataPack) GetHeadLen() uint32 {
 	return 8
 }
 
-//数据封包方法---将数据打包成|dataLen|dataID|data|形式
+//数据封包方法---将数据打包成|dataLen|dataID|data|的二进制数据流形式
 func (zdp *ZinxDataPack)Pack(message zinxInterface.InterfaceMessage)([]byte, error){
 	//创建一个存放二进制的字节缓冲区
 	dataBuffer := bytes.NewBuffer([]byte{})

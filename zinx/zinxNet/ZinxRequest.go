@@ -9,18 +9,15 @@ type ZinxRequest struct {
 	zinxInterface.InterfaceRequest
 	//链接信息
 	conn zinxInterface.InterfaceConnection
-	//数据内容
-	data []byte
-	//数据长度
-	length int
+	//客户端发送的消息
+	message zinxInterface.InterfaceMessage
 }
 
 //定义初始化请求的方法
-func NewZinxRequest(conn zinxInterface.InterfaceConnection,data []byte,length int)zinxInterface.InterfaceRequest  {
+func NewZinxRequest(conn zinxInterface.InterfaceConnection,message zinxInterface.InterfaceMessage )zinxInterface.InterfaceRequest  {
 	return &ZinxRequest{
 		conn:conn,
-		data:data,
-		length:length,
+		message:message,
 	}
 }
 
@@ -31,12 +28,7 @@ func (zrqst *ZinxRequest)GetConnection() zinxInterface.InterfaceConnection{
 	return  zrqst.conn
 }
 
-//得到链接的数据
-func (zrqst *ZinxRequest)GetData() []byte{
-	return zrqst.data
-}
-
-//得到数据的长度
-func (zrqst *ZinxRequest)GetDataLen() int{
-	return zrqst.length
+//得到客户端发送的消息
+func (zrqst *ZinxRequest)GetMessage() zinxInterface.InterfaceMessage{
+	return zrqst.message
 }

@@ -4,7 +4,8 @@ import (
 	"net"
 	"ZinxServerFramework/zinx/zinxInterface"
 	"fmt"
-	"ZinxServerFramework/zinx/utils"
+	"io"
+	"errors"
 )
 
 //实现具体的TCP链接模块
@@ -37,27 +38,48 @@ func NewZinxConnection(conn *net.TCPConn, connId uint32, router zinxInterface.In
 }
 
 //针对链接读业务的方法
-func (conn *ZinxConnection) StartReader() {
+func (zc *ZinxConnection) StartReader() {
 	//从对端读数据
 	fmt.Println("Reader go is startin...")
-	defer fmt.Println("connId = ", conn.ConnID, "Reader is exit,remote addr is =", conn.GetRemoteAddr().String())
-	defer conn.Stop()
+	defer fmt.Println("connId = ", zc.ConnID, "Reader is exit,remote addr is =", zc.GetRemoteAddr().String())
+	defer zc.Stop()
 	for {
-		buf := make([]byte, utils.Globj.MaxPackage)
-		n, err := conn.Conn.Read(buf)
-		if err != nil {
-			fmt.Println("receive buff err:", err)
+		//创建拆包封包对象
+		zdp := NewZinxDataPack()
+
+		//读取客户端消息的头部
+		headData := make([]byte, zdp.GetHeadLen())
+		if _, err := io.ReadFull(zc.Conn, headData); err != nil {
+			fmt.Println("read msg head err :", err)
 			break
 		}
-		//将当前一次性得到的客户端请求数据封装成一个Request
-		request := NewZinxRequest(conn, buf, n)
+		//根据头部数据的长度，进行第二次读取
+		message, err := zdp.UnPack(headData)
+		if err != nil {
+			fmt.Println("UnPack err :", err)
+			break
+		}
+		//根据长度，再次读取
+		var data []byte
+		if message.GetMsgLen() > 0 {
+			//有内容
+			data = make([]byte, message.GetMsgLen())
+			if _, err := io.ReadFull(zc.Conn, data); err != nil {
+				fmt.Println("read msg data err :", err)
+				break
+			}
+		}
+		//给data赋值
+		message.SetData(data)
+		//将读出来的message组装成一个request
+		request := NewZinxRequest(zc, message)
 
 		//调用用户传递进来的业务处理方法,即自定义router中的业务处理方法--模板设计模式
 		go func() { //添加go程,防止阻塞
 			//在此处理核心业务
-			conn.Router.PreHandle(request)
-			conn.Router.Handle(request)
-			conn.Router.PostHandle(request)
+			zc.Router.PreHandle(request)
+			zc.Router.Handle(request)
+			zc.Router.PostHandle(request)
 		}()
 	}
 }
@@ -65,45 +87,59 @@ func (conn *ZinxConnection) StartReader() {
 //实现抽象接口的方法
 
 //启动链接
-func (conn *ZinxConnection) Start() {
-	fmt.Println("Conn start()...id=", conn.ConnID)
+func (zc *ZinxConnection) Start() {
+	fmt.Println("Conn start()...id=", zc.ConnID)
 	//先进行读业务,添加go程,将读写进行分离
-	go conn.StartReader()
+	go zc.StartReader()
 
 	//TODO 进行写业务
 }
 
 //停止链接
-func (conn *ZinxConnection) Stop() {
-	fmt.Println("c.stop()...ConnId=", conn.ConnID)
+func (zc *ZinxConnection) Stop() {
+	fmt.Println("c.stop()...ConnId=", zc.ConnID)
 	//回收工作
-	if conn.IsClosed == true {
+	if zc.IsClosed == true {
 		return
 	}
-	conn.IsClosed = true
+	zc.IsClosed = true
 	//关闭原生的套接字
-	conn.Conn.Close()
+	zc.Conn.Close()
 }
 
 //获取链接ID
-func (conn *ZinxConnection) GetConnID() uint32 {
-	return conn.ConnID
+func (zc *ZinxConnection) GetConnID() uint32 {
+	return zc.ConnID
 }
 
 //获取conn的原生socket套接字
-func (conn *ZinxConnection) GetTCPConnection() *net.TCPConn {
-	return conn.Conn
+func (zc *ZinxConnection) GetTCPConnection() *net.TCPConn {
+	return zc.Conn
 }
 
 //获取远程客户端的ip地址
-func (conn *ZinxConnection) GetRemoteAddr() net.Addr {
-	return conn.Conn.RemoteAddr()
+func (zc *ZinxConnection) GetRemoteAddr() net.Addr {
+	return zc.Conn.RemoteAddr()
 }
 
 //发送数据给对方客户端
-func (conn *ZinxConnection) Send(data []byte, cnt int) error {
-	if _, err := conn.Conn.Write(data[:cnt]); err != nil {
-		fmt.Println("send buf err:", err)
+func (zc *ZinxConnection) Send(messageId uint32, messageData []byte) error {
+	//判断当前链接是否关闭
+	if zc.IsClosed == true {
+		return errors.New ("Connection is closed ...send Msg")
+	}
+	//创建拆包封包对象
+	zdp := NewZinxDataPack()
+	//将数据封包成二进制数据流形式
+	binaryMessage,err := zdp.Pack(NewZinxMessage(messageId,messageData))
+	if err!=nil{
+		fmt.Println("Pack error msg id =",messageId)
+		return err
+	}
+	//将binaryMessage发送给对端
+	if _,err := zc.Conn.Write(binaryMessage);err!=nil{
+		fmt.Println("Write message err:",err)
+		return err
 	}
 	return nil
 }

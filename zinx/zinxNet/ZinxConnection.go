@@ -21,19 +21,19 @@ type ZinxConnection struct {
 	//当前的链接状态
 	IsClosed bool
 
-	//当前链接所绑定的Router
-	Router zinxInterface.InterfaceRouter
+	//多路由的消息管理模块
+	MsgHandler zinxInterface.InterfaceMsgHandler
 }
 
 /*
 	初始化链接方法
 */
-func NewZinxConnection(conn *net.TCPConn, connId uint32, router zinxInterface.InterfaceRouter) zinxInterface.InterfaceConnection {
+func NewZinxConnection(conn *net.TCPConn, connId uint32, msgHandler zinxInterface.InterfaceMsgHandler) zinxInterface.InterfaceConnection {
 	return &ZinxConnection{
-		Conn:     conn,
-		ConnID:   connId,
-		IsClosed: false,
-		Router:   router,
+		Conn:       conn,
+		ConnID:     connId,
+		IsClosed:   false,
+		MsgHandler: msgHandler,
 	}
 }
 
@@ -75,12 +75,9 @@ func (zc *ZinxConnection) StartReader() {
 		request := NewZinxRequest(zc, message)
 
 		//调用用户传递进来的业务处理方法,即自定义router中的业务处理方法--模板设计模式
-		go func() { //添加go程,防止阻塞
-			//在此处理核心业务
-			zc.Router.PreHandle(request)
-			zc.Router.Handle(request)
-			zc.Router.PostHandle(request)
-		}()
+		//添加go程,防止阻塞
+		//在此调用MsgHander的调度路由方法处理核心业务
+		go zc.MsgHandler.DoMsgHandler(request)
 	}
 }
 
@@ -126,19 +123,19 @@ func (zc *ZinxConnection) GetRemoteAddr() net.Addr {
 func (zc *ZinxConnection) Send(messageId uint32, messageData []byte) error {
 	//判断当前链接是否关闭
 	if zc.IsClosed == true {
-		return errors.New ("Connection is closed ...send Msg")
+		return errors.New("Connection is closed ...send Msg")
 	}
 	//创建拆包封包对象
 	zdp := NewZinxDataPack()
 	//将数据封包成二进制数据流形式
-	binaryMessage,err := zdp.Pack(NewZinxMessage(messageId,messageData))
-	if err!=nil{
-		fmt.Println("Pack error msg id =",messageId)
+	binaryMessage, err := zdp.Pack(NewZinxMessage(messageId, messageData))
+	if err != nil {
+		fmt.Println("Pack error msg id =", messageId)
 		return err
 	}
 	//将binaryMessage发送给对端
-	if _,err := zc.Conn.Write(binaryMessage);err!=nil{
-		fmt.Println("Write message err:",err)
+	if _, err := zc.Conn.Write(binaryMessage); err != nil {
+		fmt.Println("Write message err:", err)
 		return err
 	}
 	return nil

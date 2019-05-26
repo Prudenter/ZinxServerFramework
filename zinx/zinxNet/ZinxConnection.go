@@ -23,6 +23,12 @@ type ZinxConnection struct {
 
 	//多路由的消息管理模块
 	MsgHandler zinxInterface.InterfaceMsgHandler
+
+	//添加一个channel,用于Reader和Writer之间通信
+	messageChan chan []byte
+
+	//添加一个channel,用于Reader通知writer conn已经关闭,writer需要退出
+	writerExitChan chan bool
 }
 
 /*
@@ -30,10 +36,12 @@ type ZinxConnection struct {
 */
 func NewZinxConnection(conn *net.TCPConn, connId uint32, msgHandler zinxInterface.InterfaceMsgHandler) zinxInterface.InterfaceConnection {
 	return &ZinxConnection{
-		Conn:       conn,
-		ConnID:     connId,
-		IsClosed:   false,
-		MsgHandler: msgHandler,
+		Conn:           conn,
+		ConnID:         connId,
+		IsClosed:       false,
+		MsgHandler:     msgHandler,
+		messageChan:    make(chan []byte),
+		writerExitChan: make(chan bool),
 	}
 }
 
@@ -81,6 +89,24 @@ func (zc *ZinxConnection) StartReader() {
 	}
 }
 
+/*
+	写消息的goroutine,负责专门给客户端发送消息
+*/
+func (zc *ZinxConnection) StartWriter() {
+	fmt.Println("[Writer Gotoutine is Statted...]")
+	defer fmt.Println("[Writer Goroutine Stop...]")
+	//循环监听channel中的数据流动,有数据就写给客户端
+	for {
+		select { //IO多路复用
+		case data := <-zc.messageChan:
+			if _, err := zc.Conn.Write(data); err != nil {
+				fmt.Println("write data err :", err)
+				return
+			}
+		}
+	}
+}
+
 //实现抽象接口的方法
 
 //启动链接
@@ -88,8 +114,8 @@ func (zc *ZinxConnection) Start() {
 	fmt.Println("Conn start()...id=", zc.ConnID)
 	//先进行读业务,添加go程,将读写进行分离
 	go zc.StartReader()
-
-	//TODO 进行写业务
+	//进行写业务
+	go zc.StartWriter()
 }
 
 //停止链接
@@ -100,8 +126,15 @@ func (zc *ZinxConnection) Stop() {
 		return
 	}
 	zc.IsClosed = true
+
+	//在链接关闭后告诉writer
+	zc.writerExitChan <- true
+
 	//关闭原生的套接字
 	zc.Conn.Close()
+	//释放channel资源
+	close(zc.messageChan)
+	close(zc.writerExitChan)
 }
 
 //获取链接ID
@@ -133,10 +166,7 @@ func (zc *ZinxConnection) Send(messageId uint32, messageData []byte) error {
 		fmt.Println("Pack error msg id =", messageId)
 		return err
 	}
-	//将binaryMessage发送给对端
-	if _, err := zc.Conn.Write(binaryMessage); err != nil {
-		fmt.Println("Write message err:", err)
-		return err
-	}
+	//将封包好的二进制数据发送给channel,让writer去写给客户端
+	zc.messageChan <- binaryMessage
 	return nil
 }

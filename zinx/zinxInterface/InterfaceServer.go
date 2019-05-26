@@ -1,4 +1,5 @@
 package zinxInterface
+
 /*
 	定义Server模块的抽象层
 */
@@ -11,6 +12,5 @@ type ZinxInterfaceServer interface {
 	Run()
 
 	//定义添加路由的方法,暴露给开发者
-	AddRouter(router InterfaceRouter)
+	AddRouter(messageId uint32, router InterfaceRouter)
 }
-

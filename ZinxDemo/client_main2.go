@@ -27,7 +27,7 @@ func main() {
 		//先封包再发包,定义封包拆包对象
 		zdp := zinxNet.NewZinxDataPack()
 		//把数据封包成二进制数据流形式
-		binaryMessage, err := zdp.Pack(zinxNet.NewZinxMessage(1, []byte("this is client01 test message.")))
+		binaryMessage, err := zdp.Pack(zinxNet.NewZinxMessage(2, []byte("this is client02 test message")))
 		if err != nil {
 			fmt.Println("Pack err :", err)
 			break

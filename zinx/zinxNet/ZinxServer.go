@@ -15,25 +15,28 @@ type ZinxServer struct {
 
 	//服务器ip
 	IP string
+
 	//ip版本
 	IPVersion string
+
 	//服务器端口
 	Port int
+
 	//服务器名称
 	Name string
 
-	//路由属性
-	Router zinxInterface.InterfaceRouter
+	//多路由的消息管理模块
+	MsgHandler zinxInterface.InterfaceMsgHandler
 }
 
 //定义初始化服务器的方法
 func NewServer() zinxInterface.ZinxInterfaceServer {
 	server := &ZinxServer{
-		IP:        utils.Globj.Host,
-		IPVersion: "tcp4",
-		Port:      utils.Globj.Port,
-		Name:      utils.Globj.Name,
-		Router:    nil,
+		IP:         utils.Globj.Host,
+		IPVersion:  "tcp4",
+		Port:       utils.Globj.Port,
+		Name:       utils.Globj.Name,
+		MsgHandler: NewZinxMsgHandler(),
 	}
 	return server
 }
@@ -71,8 +74,8 @@ func (server *ZinxServer) Start() {
 				continue
 			}
 
-			//创建一个ZinxConnection对象
-			dealConn := NewZinxConnection(conn, connId, server.Router)
+			//创建一个ZinxConnection对象,并传入当前消息的管理模块
+			dealConn := NewZinxConnection(conn, connId, server.MsgHandler)
 			connId ++
 			//启动链接,进行业务处理
 			go dealConn.Start() // 如果不加go程,则当前子go程会一直阻塞,无法进行并发访问,不能同时处理多个客户端的请求
@@ -99,6 +102,8 @@ func (server *ZinxServer) Run() {
 }
 
 //添加路由的方法
-func (server *ZinxServer) AddRouter(router zinxInterface.InterfaceRouter) {
-	server.Router = router
+func (server *ZinxServer) AddRouter(messageId uint32, router zinxInterface.InterfaceRouter) {
+	//添加路由和messageid到msghandler中
+	server.MsgHandler.AddRouter(messageId, router)
+	fmt.Println("Add Router success! messageId = ", messageId)
 }

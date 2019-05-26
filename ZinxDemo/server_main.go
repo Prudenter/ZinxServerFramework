@@ -22,9 +22,9 @@ type PingRouter struct {
 func (this *PingRouter)PreHandle(requset zinxInterface.InterfaceRequest){
 	fmt.Println("The PreHandle Is Running...")
 	//给客户端回写一个数据
-	_,err := requset.GetConnection().GetTCPConnection().Write([]byte("before ping ...\n"))
+	err := requset.GetConnection().Send(1,[]byte("before ping ..."))
 	if err != nil {
-		fmt.Println("call back before ping error ...")
+		fmt.Println("before Send err:",err)
 		return
 	}
 }
@@ -33,9 +33,9 @@ func (this *PingRouter)PreHandle(requset zinxInterface.InterfaceRequest){
 func (this *PingRouter)Handle(requset zinxInterface.InterfaceRequest){
 	fmt.Println("The Handle Is Running...")
 	//给客户端回写一个数据
-	_,err := requset.GetConnection().GetTCPConnection().Write([]byte("ping..ping.. ping ...\n"))
+	err := requset.GetConnection().Send(1,[]byte("ping...ping...ping"))
 	if err != nil {
-		fmt.Println("call back ping error ...")
+		fmt.Println("Send err :",err)
 		return
 	}
 }
@@ -44,9 +44,9 @@ func (this *PingRouter)Handle(requset zinxInterface.InterfaceRequest){
 func (this *PingRouter)PostHandle(requset zinxInterface.InterfaceRequest){
 	fmt.Println("The PostHandle Is Running...")
 	//给客户端回写一个数据
-	_,err := requset.GetConnection().GetTCPConnection().Write([]byte("after ping ...\n"))
+	err := requset.GetConnection().Send(1,[]byte("after ping ..."))
 	if err != nil {
-		fmt.Println("call back after ping error ...")
+		fmt.Println("after Send err:",err)
 		return
 	}
 }

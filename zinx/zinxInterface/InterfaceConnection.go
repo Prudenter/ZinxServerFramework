@@ -22,7 +22,7 @@ type InterfaceConnection interface {
 	GetRemoteAddr() net.Addr
 
 	//发送数据给对方客户端
-	Send(data[]byte,cnt int)error
+	Send(messageId uint32,messageData []byte)error
 }
 
 //定义抽象的业务处理方法,将函数指针定义在抽象层,符合依赖倒转设计原则

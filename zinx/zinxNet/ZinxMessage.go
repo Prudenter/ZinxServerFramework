@@ -14,6 +14,15 @@ type ZinxMessage struct {
 	Data []byte
 }
 
+//定义初始化消息的方法
+func NewZinxMessage(id uint32,data []byte)zinxInterface.InterfaceMessage  {
+	return &ZinxMessage{
+		Id:id,
+		DataLen:uint32(len(data)),
+		Data:data,
+	}
+}
+
 //实现抽象接口的所有方法
 
 //getter方法

@@ -46,14 +46,18 @@ func NewServer() zinxInterface.ZinxInterfaceServer {
 //启动服务器,实现服务器监听---使用原生socket 服务器编程
 func (server *ZinxServer) Start() {
 	fmt.Printf("[start] %s Linstenner at IP:%s,Port:%d,is starting..\n", server.Name, server.IP, server.Port)
-	//1.创建套接字,得到一个TCP的addr
+
+	//1.在监听之前启动工作池
+	server.MsgHandler.StartWorkerPool()
+
+	//2.创建套接字,得到一个TCP的addr
 	addr, err := net.ResolveTCPAddr(server.IPVersion, fmt.Sprintf("%s:%d", server.IP, server.Port))
 	if err != nil {
 		fmt.Println("ResolveTCPAddr err:", err)
 		return
 	}
 
-	//2.监听服务器地址
+	//3.监听服务器地址
 	listenner, err := net.ListenTCP(server.IPVersion, addr)
 	if err != nil {
 		fmt.Println("ListenTCP err:", err)
@@ -64,7 +68,7 @@ func (server *ZinxServer) Start() {
 	var connId uint32
 	connId = 0
 
-	//3.阻塞等待客户端发送请求
+	//4.阻塞等待客户端发送请求
 	go func() { //如果不加go程,Start()会一直阻塞,则主go程也会阻塞,无法执行主go程的其他扩展
 		for {
 			//阻塞等待客户端发送请求

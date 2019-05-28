@@ -10,11 +10,13 @@ import (
 */
 type GlobalObj struct {
 	//关于server的配置
-	Host       string //当前监听的IP
-	Port       int    //当前监听的Port
-	Name       string //当前zinxServer的名称
-	Version    string //当前监框架的版本号
-	MaxPackage uint32 //服务器每Read一次的最大长度
+	Host             string //当前监听的IP
+	Port             int    //当前监听的Port
+	Name             string //当前zinxServer的名称
+	Version          string //当前监框架的版本号
+	MaxPackage       uint32 //服务器每Read一次的最大长度
+	WorkerPoolSiz    uint32 //当前服务器要开启多少个worker Goroutine
+	MaxWorkerTaskLen uint32 //每个worker对应的消息对象channel允许缓存的最大任务Request数量
 }
 
 //定义一个全局的对外的配置对象
@@ -24,11 +26,13 @@ var Globj *GlobalObj
 func init() {
 	//初始化全局配置对象,设置默认值
 	Globj = &GlobalObj{
-		Name:       "ZinxServerFramework",
-		Host:       "0.0.0.0",
-		Port:       8888,
-		Version:    "V_0.4",
-		MaxPackage: 512,
+		Name:             "ZinxServerFramework",
+		Host:             "0.0.0.0",
+		Port:             8888,
+		Version:          "V_0.4",
+		MaxPackage:       512,
+		WorkerPoolSiz:    10,
+		MaxWorkerTaskLen: 4096,
 	}
 	//加载开发者自定义的配置文件
 	Globj.LoadConfig()
@@ -43,7 +47,7 @@ func (globj *GlobalObj) LoadConfig() {
 	}
 
 	//解析zinx.json文件,将其中的数据赋值给Globj
-	err = json.Unmarshal(data, &Globj)	//这里为什么还要取地址
+	err = json.Unmarshal(data, &Globj) //这里为什么还要取地址
 	if err != nil {
 		panic(err)
 	}

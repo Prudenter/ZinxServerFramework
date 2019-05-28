@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"errors"
+	"ZinxServerFramework/zinx/utils"
 )
 
 //实现具体的TCP链接模块
@@ -83,9 +84,13 @@ func (zc *ZinxConnection) StartReader() {
 		request := NewZinxRequest(zc, message)
 
 		//调用用户传递进来的业务处理方法,即自定义router中的业务处理方法--模板设计模式
-		//添加go程,防止阻塞
 		//在此调用MsgHander的调度路由方法处理核心业务
-		go zc.MsgHandler.DoMsgHandler(request)
+		//将request交给worker工作池来处理
+		if utils.Globj.WorkerPoolSiz > 0 {
+			zc.MsgHandler.SendMsgToTaskQueue(request)
+		}else {
+			go zc.MsgHandler.DoMsgHandler(request)
+		}
 	}
 }
 
@@ -103,6 +108,9 @@ func (zc *ZinxConnection) StartWriter() {
 				fmt.Println("write data err :", err)
 				return
 			}
+		case <-zc.writerExitChan:
+			//代表reader已经退出了,writer也要退出
+			return
 		}
 	}
 }

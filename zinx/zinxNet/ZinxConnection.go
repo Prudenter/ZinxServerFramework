@@ -30,20 +30,30 @@ type ZinxConnection struct {
 
 	//添加一个channel,用于Reader通知writer conn已经关闭,writer需要退出
 	writerExitChan chan bool
+
+	//当前链接是属于哪个server创建的
+	server zinxInterface.ZinxInterfaceServer
 }
 
 /*
 	初始化链接方法
 */
-func NewZinxConnection(conn *net.TCPConn, connId uint32, msgHandler zinxInterface.InterfaceMsgHandler) zinxInterface.InterfaceConnection {
-	return &ZinxConnection{
+func NewZinxConnection(conn *net.TCPConn, connId uint32, msgHandler zinxInterface.InterfaceMsgHandler,
+	server zinxInterface.ZinxInterfaceServer) zinxInterface.InterfaceConnection {
+	zc := &ZinxConnection{
 		Conn:           conn,
 		ConnID:         connId,
 		IsClosed:       false,
 		MsgHandler:     msgHandler,
 		messageChan:    make(chan []byte),
 		writerExitChan: make(chan bool),
+		server:         server,
 	}
+
+	//当已经成功创建一个链接的时候,将链接添加到链接管理器中
+	zc.server.GetConnMgr().Add(zc)
+
+	return zc
 }
 
 //针对链接读业务的方法
@@ -88,7 +98,7 @@ func (zc *ZinxConnection) StartReader() {
 		//将request交给worker工作池来处理
 		if utils.Globj.WorkerPoolSiz > 0 {
 			zc.MsgHandler.SendMsgToTaskQueue(request)
-		}else {
+		} else {
 			go zc.MsgHandler.DoMsgHandler(request)
 		}
 	}
@@ -140,6 +150,10 @@ func (zc *ZinxConnection) Stop() {
 
 	//关闭原生的套接字
 	zc.Conn.Close()
+
+	//将当前链接从链接管理模块中删除
+	zc.server.GetConnMgr().Remove(zc.ConnID)
+
 	//释放channel资源
 	close(zc.messageChan)
 	close(zc.writerExitChan)

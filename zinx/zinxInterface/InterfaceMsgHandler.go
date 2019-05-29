@@ -1,7 +1,7 @@
 package zinxInterface
 
 /*
-	定义抽象的消息管理模块,存放router集合的
+	定义抽象的消息管理模块,存放router的集合
 */
 
 type InterfaceMsgHandler interface {

@@ -17,6 +17,7 @@ type GlobalObj struct {
 	MaxPackage       uint32 //服务器每Read一次的最大长度
 	WorkerPoolSiz    uint32 //当前服务器要开启多少个worker Goroutine
 	MaxWorkerTaskLen uint32 //每个worker对应的消息对象channel允许缓存的最大任务Request数量
+	MaxConn          uint32 //当前server的最大链接数量
 }
 
 //定义一个全局的对外的配置对象
@@ -33,6 +34,7 @@ func init() {
 		MaxPackage:       512,
 		WorkerPoolSiz:    10,
 		MaxWorkerTaskLen: 4096,
+		MaxConn:          1000,
 	}
 	//加载开发者自定义的配置文件
 	Globj.LoadConfig()

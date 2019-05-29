@@ -27,6 +27,9 @@ type ZinxServer struct {
 
 	//多路由的消息管理模块
 	MsgHandler zinxInterface.InterfaceMsgHandler
+
+	//链接管理模块
+	ConnMgr zinxInterface.InterfaceConnManager
 }
 
 //定义初始化服务器的方法
@@ -37,6 +40,7 @@ func NewServer() zinxInterface.ZinxInterfaceServer {
 		Port:       utils.Globj.Port,
 		Name:       utils.Globj.Name,
 		MsgHandler: NewZinxMsgHandler(),
+		ConnMgr:    NewZinxConnManager(),
 	}
 	return server
 }
@@ -44,21 +48,21 @@ func NewServer() zinxInterface.ZinxInterfaceServer {
 //实现抽象接口的方法
 
 //启动服务器,实现服务器监听---使用原生socket 服务器编程
-func (server *ZinxServer) Start() {
-	fmt.Printf("[start] %s Linstenner at IP:%s,Port:%d,is starting..\n", server.Name, server.IP, server.Port)
+func (zs *ZinxServer) Start() {
+	fmt.Printf("[start] %s Linstenner at IP:%s,Port:%d,is starting..\n", zs.Name, zs.IP, zs.Port)
 
 	//1.在监听之前启动工作池
-	server.MsgHandler.StartWorkerPool()
+	zs.MsgHandler.StartWorkerPool()
 
 	//2.创建套接字,得到一个TCP的addr
-	addr, err := net.ResolveTCPAddr(server.IPVersion, fmt.Sprintf("%s:%d", server.IP, server.Port))
+	addr, err := net.ResolveTCPAddr(zs.IPVersion, fmt.Sprintf("%s:%d", zs.IP, zs.Port))
 	if err != nil {
 		fmt.Println("ResolveTCPAddr err:", err)
 		return
 	}
 
 	//3.监听服务器地址
-	listenner, err := net.ListenTCP(server.IPVersion, addr)
+	listenner, err := net.ListenTCP(zs.IPVersion, addr)
 	if err != nil {
 		fmt.Println("ListenTCP err:", err)
 		return
@@ -79,7 +83,15 @@ func (server *ZinxServer) Start() {
 			}
 
 			//创建一个ZinxConnection对象,并传入当前消息的管理模块
-			dealConn := NewZinxConnection(conn, connId, server.MsgHandler)
+			dealConn := NewZinxConnection(conn, connId, zs.MsgHandler, zs)
+
+			//判断当前的server链接数量是否已经到最大值,如果达到最大值,则不在添加链接---先添加再判断
+			if zs.ConnMgr.GetLen() > int(utils.Globj.MaxConn) {
+				//当前链接已经满了
+				fmt.Println("--->Too many Connection,Maxconn = ", utils.Globj.MaxConn)
+				conn.Close()
+				continue
+			}
 			connId ++
 			//启动链接,进行业务处理
 			go dealConn.Start() // 如果不加go程,则当前子go程会一直阻塞,无法进行并发访问,不能同时处理多个客户端的请求
@@ -88,14 +100,15 @@ func (server *ZinxServer) Start() {
 }
 
 //停止服务器
-func (server *ZinxServer) Stop() {
-	//TODO 将一些服务器资源进行回收
+func (zs *ZinxServer) Stop() {
+	//服务器停止时,清空当前全部的链接
+	zs.ConnMgr.ClearConn()
 }
 
 //运行服务器
-func (server *ZinxServer) Run() {
+func (zs *ZinxServer) Run() {
 	//启动server的监听功能
-	server.Start()
+	zs.Start()
 
 	//TODO 做一些其他的扩展
 
@@ -106,8 +119,13 @@ func (server *ZinxServer) Run() {
 }
 
 //添加路由的方法
-func (server *ZinxServer) AddRouter(messageId uint32, router zinxInterface.InterfaceRouter) {
+func (zs *ZinxServer) AddRouter(messageId uint32, router zinxInterface.InterfaceRouter) {
 	//添加路由和messageid到msghandler中
-	server.MsgHandler.AddRouter(messageId, router)
+	zs.MsgHandler.AddRouter(messageId, router)
 	fmt.Println("Add Router success! messageId = ", messageId)
+}
+
+//得到链接管理模块的方法
+func (zs *ZinxServer) GetConnMgr() zinxInterface.InterfaceConnManager {
+	return zs.ConnMgr
 }

@@ -50,6 +50,7 @@ func (this *PingRouter)PostHandle(requset zinxInterface.InterfaceRequest){
 		return
 	}
 }
+
 type HelloRouter struct {
 	zinxNet.ZinxRouter
 }

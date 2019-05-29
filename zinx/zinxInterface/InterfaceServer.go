@@ -16,4 +16,16 @@ type ZinxInterfaceServer interface {
 
 	//定义添加路由的方法,暴露给开发者
 	AddRouter(messageId uint32, router InterfaceRouter)
+
+	//注册 创建链接之后调用的Hook函数的方法
+	AddOnConnStart(hookFunc func(conn InterfaceConnection))
+
+	//注册 销毁链接之前调用的Hook函数 的方法
+	AddOnConnStop(hookFunc func(conn InterfaceConnection))
+
+	//调用 创建链接之后的HOOK函数的方法
+	CallOnConnStart(conn InterfaceConnection)
+
+	//调用 销毁链接之前调用的HOOk函数的方法
+	CallOnConnStop(conn InterfaceConnection)
 }

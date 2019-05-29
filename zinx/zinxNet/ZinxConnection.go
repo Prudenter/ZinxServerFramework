@@ -134,11 +134,18 @@ func (zc *ZinxConnection) Start() {
 	go zc.StartReader()
 	//进行写业务
 	go zc.StartWriter()
+
+	//调用创建链接之后用户自定义的Hook
+	zc.server.CallOnConnStart(zc)
 }
 
 //停止链接
 func (zc *ZinxConnection) Stop() {
 	fmt.Println("c.stop()...ConnId=", zc.ConnID)
+
+	//调用销毁链接之前用户自定义的Hook函数
+	zc.server.CallOnConnStop(zc)
+
 	//回收工作
 	if zc.IsClosed == true {
 		return

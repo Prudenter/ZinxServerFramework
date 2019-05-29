@@ -30,6 +30,12 @@ type ZinxServer struct {
 
 	//链接管理模块
 	ConnMgr zinxInterface.InterfaceConnManager
+
+	//该server创建链接之后自动调用的Hook函数
+	OnConnStart func(conn zinxInterface.InterfaceConnection)
+
+	//该server销毁链接之前自动调用的Hook函数
+	OnConnStop func(conn zinxInterface.InterfaceConnection)
 }
 
 //定义初始化服务器的方法
@@ -82,16 +88,17 @@ func (zs *ZinxServer) Start() {
 				continue
 			}
 
-			//创建一个ZinxConnection对象,并传入当前消息的管理模块
-			dealConn := NewZinxConnection(conn, connId, zs.MsgHandler, zs)
-
-			//判断当前的server链接数量是否已经到最大值,如果达到最大值,则不在添加链接---先添加再判断
-			if zs.ConnMgr.GetLen() > int(utils.Globj.MaxConn) {
+			//判断当前的server链接数量是否已经到最大值,如果达到最大值,则不在添加链接---先判断再添加
+			if zs.ConnMgr.GetLen() >= int(utils.Globj.MaxConn) {
 				//当前链接已经满了
 				fmt.Println("--->Too many Connection,Maxconn = ", utils.Globj.MaxConn)
 				conn.Close()
 				continue
 			}
+
+			//创建一个ZinxConnection对象,并传入当前消息的管理模块
+			dealConn := NewZinxConnection(conn, connId, zs.MsgHandler, zs)
+
 			connId ++
 			//启动链接,进行业务处理
 			go dealConn.Start() // 如果不加go程,则当前子go程会一直阻塞,无法进行并发访问,不能同时处理多个客户端的请求
@@ -128,4 +135,30 @@ func (zs *ZinxServer) AddRouter(messageId uint32, router zinxInterface.Interface
 //得到链接管理模块的方法
 func (zs *ZinxServer) GetConnMgr() zinxInterface.InterfaceConnManager {
 	return zs.ConnMgr
+}
+
+//注册 创建链接之后调用的Hook函数的方法
+func (zs *ZinxServer) AddOnConnStart(hookFunc func(conn zinxInterface.InterfaceConnection)){
+	zs.OnConnStart = hookFunc
+}
+
+//注册 销毁链接之前调用的Hook函数 的方法
+func (zs *ZinxServer)AddOnConnStop(hookFunc func(conn zinxInterface.InterfaceConnection)){
+	zs.OnConnStop = hookFunc
+}
+
+//调用 创建链接之后的HOOK函数的方法
+func (zs *ZinxServer)CallOnConnStart(conn zinxInterface.InterfaceConnection){
+	if zs.OnConnStart != nil {
+		fmt.Println("--->Call OnConnStart()...")
+		zs.OnConnStart(conn)
+	}
+}
+
+//调用 销毁链接之前调用的HOOk函数的方法
+func (zs *ZinxServer)CallOnConnStop(conn zinxInterface.InterfaceConnection){
+	if zs.OnConnStop != nil {
+		fmt.Println("--->Call OnConnStop()...")
+		zs.OnConnStop(conn)
+	}
 }

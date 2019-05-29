@@ -3,6 +3,7 @@
   "Host": "127.0.0.1",
   "Port": 7777,
   "MaxPackage": 4096,
-  "WorkerPoolSize":10,
-  "MaxWorkerTaskLen":4096
+  "WorkerPoolSize": 10,
+  "MaxWorkerTaskLen": 4096,
+  "MaxConn": 3
 }

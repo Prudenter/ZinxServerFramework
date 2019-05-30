@@ -7,6 +7,7 @@ import (
 	"io"
 	"errors"
 	"ZinxServerFramework/zinx/utils"
+	"sync"
 )
 
 //实现具体的TCP链接模块
@@ -33,6 +34,12 @@ type ZinxConnection struct {
 
 	//当前链接是属于哪个server创建的
 	server zinxInterface.ZinxInterfaceServer
+
+	//当前链接模块所具备的一些属性集合
+	property map[string]interface{}
+
+	//保护当前property的锁
+	propertyLock sync.RWMutex
 }
 
 /*
@@ -48,6 +55,7 @@ func NewZinxConnection(conn *net.TCPConn, connId uint32, msgHandler zinxInterfac
 		messageChan:    make(chan []byte),
 		writerExitChan: make(chan bool),
 		server:         server,
+		property:make(map[string]interface{}),
 	}
 
 	//当已经成功创建一个链接的时候,将链接添加到链接管理器中
@@ -198,4 +206,37 @@ func (zc *ZinxConnection) Send(messageId uint32, messageData []byte) error {
 	//将封包好的二进制数据发送给channel,让writer去写给客户端
 	zc.messageChan <- binaryMessage
 	return nil
+}
+
+//设置属性
+func (zc *ZinxConnection) SetProperty(key string,value interface{}){
+	//添加写锁
+	zc.propertyLock.Lock()
+	//解锁
+	defer zc.propertyLock.Unlock()
+	//添加一个属性
+	zc.property[key] = value
+}
+
+//获取属性
+func (zc *ZinxConnection) GetProperty(key string)(interface{},error){
+	//加读锁
+	zc.propertyLock.RLock()
+	defer zc.propertyLock.RUnlock()
+	//读取属性
+	if value,ok := zc.property[key];ok{
+		return value,nil
+	}else {
+		return nil,errors.New("no property found "+key)
+	}
+}
+
+//删除属性
+func (zc *ZinxConnection) RemoveProperty(key string){
+	//添加写锁
+	zc.propertyLock.Lock()
+	//解锁
+	defer zc.propertyLock.Unlock()
+	//删除属性
+	delete(zc.property,key)
 }

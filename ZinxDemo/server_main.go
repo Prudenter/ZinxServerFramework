@@ -75,12 +75,32 @@ func DoConntionBegin(conn zinxInterface.InterfaceConnection) {
 		fmt.Println(err)
 		return
 	}
+	//当用户一旦创建链接成功,就给链接绑定一些属性
+	fmt.Println("set conn property...")
+	conn.SetProperty("Name","ASlowPerson")
+	conn.SetProperty("address","TBD...")
+	conn.SetProperty("time","2019/5/31")
 }
 
 //链接销毁之前执行的钩子函数
 func DoConntionLost(conn zinxInterface.InterfaceConnection) {
 	fmt.Println("===> DoConntionLost ...")
 	fmt.Println("Conn id", conn.GetConnID(), "is Lost!")
+
+	//获取属性
+	fmt.Println("Get conn Property...")
+	//获取name
+	if name, err := conn.GetProperty("Name"); err == nil {
+		fmt.Println("Name = ",name)
+	}
+	//获取address
+	if address, err := conn.GetProperty("address"); err == nil {
+		fmt.Println("address = ",address)
+	}
+	//获取time
+	if time, err := conn.GetProperty("time"); err == nil {
+		fmt.Println("time = ",time)
+	}
 }
 
 func main() {
